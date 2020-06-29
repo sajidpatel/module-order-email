@@ -1,0 +1,29 @@
+{
+  "name": "sajidpatel/sales-order",
+  "description": "Example Magento 2 module created for a Coding Challenge",
+  "require": {
+      "php": "~5.6.0|~7.0.0|~7.1.0|~7.2.0",
+      "magento/framework": "*",
+      "magento/module-sales": "*",
+      "ext-json": "*"
+  },
+  "version": "0.1.0",
+  "type": "magento2-module",
+  "license": "OSL-3.0",
+  "minimum-stability": "dev",
+  "authors": [
+    {
+      "name": "Sajid Patel",
+      "email": "sajid.patel@interactivedezine.co.uk",
+      "homepage": "https://sajidpatel.me/"
+    }
+  ],
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "SajidPatel\\SalesOrder\\": "src/"
+    }
+  }
+}

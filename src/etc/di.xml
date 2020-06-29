@@ -1,0 +1,31 @@
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Custom Logger Begin -->
+    <virtualType name="orderUpdateLogger" type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="name" xsi:type="string">order_update_logger</argument>
+            <argument name="handlers"  xsi:type="array">
+                <item name="debug" xsi:type="object">SajidPatel\SalesOrder\Logger\Handler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <type name="SajidPatel\SalesOrder\Logger\Handler">
+        <arguments>
+            <argument name="logger" xsi:type="object">order_update_logger</argument>
+        </arguments>
+    </type>
+    <!-- Custom Logger End -->
+    <!-- Load Console Command Classes via Proxy -->
+    <type name="SajidPatel\SalesOrder\Console\Command\OrderEmailCommand">
+        <arguments>
+            <argument name="orderService" xsi:type="object">SajidPatel\SalesOrder\Model\OrderService\Proxy</argument>
+        </arguments>
+    </type>
+    <!-- Load Console Command Classes via Proxy -->
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="OrderEmailUpdate" xsi:type="object">SajidPatel\SalesOrder\Console\Command\OrderEmailCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>
