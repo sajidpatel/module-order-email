@@ -43,12 +43,12 @@ Will be emailed to candidates in due course.
 
 ### Type 2: Composer
 
- - Add repository vcs to composer
+ - Add the repository vcs to composer
  ```
 composer config repositories.module-order-email vcs git@github.com:sajidpatel/module-order-email.git
 
 ```
- - Install the module composer by running ```composer require sajidpatel/module-order-email```
+ - Install the module composer by running ```composer require sajidpatel/module-order-email:0.1.0```
  - enable the module by running `php bin/magento module:enable SajidPatel_OrderEmail`
  - apply database updates by running `php bin/magento setup:upgrade`
  - Flush the cache by running `php bin/magento cache:flush`
