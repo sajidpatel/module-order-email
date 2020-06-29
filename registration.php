@@ -2,4 +2,4 @@
 
 use Magento\Framework\Component\ComponentRegistrar;
 
-ComponentRegistrar::register(ComponentRegistrar::MODULE, 'SajidPatel_SalesOrder', __DIR__ . '/src');
+ComponentRegistrar::register(ComponentRegistrar::MODULE, 'SajidPatel_OrderEmail', __DIR__ . '/src');

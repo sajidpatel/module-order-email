@@ -1,30 +1,36 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
     <!-- Custom Logger Begin -->
-    <virtualType name="orderUpdateLogger" type="Magento\Framework\Logger\Monolog">
+    <virtualType name="SajidPatel\OrderEmail\Model\Logger\Handler" type="Magento\Framework\Logger\Handler\Base">
         <arguments>
-            <argument name="name" xsi:type="string">order_update_logger</argument>
-            <argument name="handlers"  xsi:type="array">
-                <item name="debug" xsi:type="object">SajidPatel\SalesOrder\Logger\Handler</item>
+            <argument name="filesystem" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+            <argument name="fileName" xsi:type="string">/var/log/sales_order.log</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="SajidPatel\OrderEmail\Model\Logger" type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="name" xsi:type="string">sales_order_email_update</argument>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">SajidPatel\OrderEmail\Model\Logger\Handler</item>
             </argument>
         </arguments>
     </virtualType>
-    <type name="SajidPatel\SalesOrder\Logger\Handler">
+    <type name="SajidPatel\OrderEmail\Model\OrderService">
         <arguments>
-            <argument name="logger" xsi:type="object">order_update_logger</argument>
+            <argument name="logger" xsi:type="object">SajidPatel\OrderEmail\Model\Logger</argument>
         </arguments>
     </type>
     <!-- Custom Logger End -->
     <!-- Load Console Command Classes via Proxy -->
-    <type name="SajidPatel\SalesOrder\Console\Command\OrderEmailCommand">
+    <type name="SajidPatel\OrderEmail\Console\Command\OrderEmailCommand">
         <arguments>
-            <argument name="orderService" xsi:type="object">SajidPatel\SalesOrder\Model\OrderService\Proxy</argument>
+            <argument name="orderService" xsi:type="object">SajidPatel\OrderEmail\Model\OrderService\Proxy</argument>
         </arguments>
     </type>
     <!-- Load Console Command Classes via Proxy -->
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">
-                <item name="OrderEmailUpdate" xsi:type="object">SajidPatel\SalesOrder\Console\Command\OrderEmailCommand</item>
+                <item name="OrderEmailUpdate" xsi:type="object">SajidPatel\OrderEmail\Console\Command\OrderEmailCommand</item>
             </argument>
         </arguments>
     </type>

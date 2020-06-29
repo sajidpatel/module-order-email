@@ -1,5 +1,6 @@
-<?php
-namespace SajidPatel\SalesOrder\Console\Command;
+<?php declare(strict_types=1);
+
+namespace SajidPatel\OrderEmail\Console\Command;
 
 use Magento\Framework\App\Area;
 use Magento\Framework\App\State;
@@ -8,9 +9,9 @@ use Magento\Framework\DataObject as FrameworkDataObject;
 use Magento\Framework\Validator\DataObject;
 use Magento\Framework\Validator\Exception;
 use Magento\Sales\Api\Data\OrderInterface;
-use Magento\Setup\Console\InputValidationException;
-use SajidPatel\SalesOrder\Model\OrderService;
-use SajidPatel\SalesOrder\Model\UserValidationRules;
+use SajidPatel\OrderEmail\Model\Exception\InputValidationException;
+use SajidPatel\OrderEmail\Model\OrderService;
+use SajidPatel\OrderEmail\Model\UserValidationRules;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -33,7 +34,6 @@ class OrderEmailCommand extends Command
     const OPTION_QUIT = 'quit';
     const OPTION_QUIT_PROMPT = 'Quit current process';
     const OPTION_ALL = 'all';
-
 
     /**
      * @var State
@@ -102,8 +102,6 @@ class OrderEmailCommand extends Command
      *
      * @param InputInterface $input
      * @param OutputInterface $output
-     *
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     protected function interact(InputInterface $input, OutputInterface $output)
     {
@@ -119,6 +117,11 @@ class OrderEmailCommand extends Command
         }
     }
 
+    /**
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int|null
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         if (!$this->quit) {
@@ -131,6 +134,8 @@ class OrderEmailCommand extends Command
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int
+     *
+     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
     public function updateOrderCallback(InputInterface $input, OutputInterface $output)
     {
@@ -140,30 +145,32 @@ class OrderEmailCommand extends Command
 
             $this->symfonyStyle = new SymfonyStyle($this->input, $this->output);
 
-            $response = $this->topLevelQuestionnaire();
-            if ($response == self::OPTION_BY_EMAIL) {
-                $orders = $this->updateByEmail();
-                $this->selectOrderToUpdate($orders);
-            } elseif ($response == self::OPTION_BY_ORDER_ID) {
-                $order = $this->updateByOrderId();
-                $this->updateOrderEmail($order);
-            } elseif ($response == self::OPTION_QUIT) {
-                $this->symfonyStyle->writeln(__('<info>Thank you</info>'));
-                $this->quit = true;
+            $response = $this->topLevelQuestion();
+            $this->orderService->logInteraction($response);
+            switch ($response) {
+                case self::OPTION_BY_EMAIL:
+                    $orders = $this->updateByEmail();
+                    $this->selectOrderToUpdate($orders);
+                    break;
+                case self::OPTION_BY_ORDER_ID:
+                    $order = $this->updateByOrderId();
+                    $this->updateOrderEmail($order);
+                    break;
+                case self::OPTION_QUIT:
+                    $this->symfonyStyle->writeln(__('<info>Thank you</info>'));
+                    $this->quit = true;
+                    break;
+                default:
+                    throw new InputValidationException('Invalid selection!');
             }
-        } catch (InputValidationException | Exception $e) {
+        } catch (InputValidationException | Exception | \Exception $e) {
             $this->quit = true;
-            $this->symfonyStyle->error(
-                'There has been a problem updating the email address: ' . $e->getMessage()
-            );
-            return Cli::RETURN_FAILURE;
-        } catch (\Exception $e) {
-            $this->quit = true;
-            $this->symfonyStyle->error(
-                'There has been a problem updating the email address: ' . $e->getMessage()
-            );
+            $message = 'There has been a problem updating the email address.  Error: ' . $e->getMessage();
+            $this->orderService->logInteraction($message);
+            $this->symfonyStyle->error($message);
             return Cli::RETURN_FAILURE;
         }
+
         return Cli::RETURN_SUCCESS;
     }
 
@@ -268,21 +275,32 @@ class OrderEmailCommand extends Command
     protected function updateOrderEmail($order, $defaultEmail = null)
     {
         $currentEmail = $order->getCustomerEmail();
-        $this->symfonyStyle->writeln(__('<info>Current order has id: %1 and customer email: %2 </info>', $order->getId(), $currentEmail));
+        $message = __('<info>Current order has id: %1 and customer email: %2 </info>', $order->getId(), $currentEmail);
+        $this->symfonyStyle->writeln($message);
+        $this->orderService->logInteraction($message);
         $newEmail = $defaultEmail ?: $this->symfonyStyle->ask(__("Please enter an new customer email", $defaultEmail));
         if ($currentEmail === $newEmail) {
-            $message = __('Current email is the same as the new email address.');
+            $message = 'Current email is the same as the new email address.';
             $this->symfonyStyle->writeln($message);
+            $this->orderService->logInteraction($message, 'error');
             throw new InputValidationException($message);
         }
-        $this->symfonyStyle->writeln(__('<info>You are about to update order %1 from current email: %2 to %3.</info>', $order->getId(), $currentEmail, $newEmail));
+        $message = __(
+            '<info>You are about to update order with id: %1 from current email: %2 to %3.</info>',
+            $order->getId(),
+            $currentEmail,
+            $newEmail
+        );
+        $this->symfonyStyle->writeln($message);
+        $this->orderService->logInteraction($message);
         $response = $this->symfonyStyle->confirm("Are you sure?[y/N]");
         if ($response == true) {
-            $response = $this->orderService->sendNewEmail($order->getId(), $currentEmail, $newEmail);
+            $response = $this->orderService->setNewEmail($order, $currentEmail, $newEmail);
             $this->symfonyStyle->success($response);
         } else {
-            $this->symfonyStyle->warning('Current order email update has been canceled.');
-            throw new \Exception('Current order email update has been canceled.');
+            $message = 'Current order email update has been canceled.';
+            $this->orderService->logInteraction($message);
+            throw new \Exception($message);
         }
         return $newEmail;
     }
@@ -293,6 +311,7 @@ class OrderEmailCommand extends Command
      */
     protected function selectOrderToUpdate(array $orders): int
     {
+        // Replace Prefix with Order URL
         $prefix = self::SELECT_ORDER_ID_PREFIX;
         foreach ($orders as $key => $order) {
             $select[$key] = __("$prefix%1", $key);
@@ -301,6 +320,7 @@ class OrderEmailCommand extends Command
         $select[self::OPTION_QUIT] = __(self::OPTION_QUIT_PROMPT);
         if ($orders) {
             $response = $this->symfonyStyle->choice("Please select from the list of order ids to update", $select);
+            $this->orderService->logInteraction('Order id to update :' . $response);
             if ($response == self::OPTION_QUIT) {
                 $this->quit = true;
                 unset($orders[self::OPTION_QUIT]);
@@ -324,6 +344,56 @@ class OrderEmailCommand extends Command
     }
 
     /**
+     * @return OrderInterface[]
+     * @throws Exception
+     */
+    protected function updateByEmail()
+    {
+        $this->symfonyStyle->title(self::OPTION_BY_EMAIL);
+        $key = self::KEY_EMAIL;
+        $prompt = self::OPTION_BY_EMAIL_PROMPT;
+        $this->orderService->logInteraction($prompt);
+
+        $emailAddress = $this->updateBy($key, $prompt);
+        $orders = $this->orderService->searchByEmail($emailAddress);
+        if (!$orders) {
+            $message = sprintf('No orders with email %s exists!', $emailAddress);
+            $this->orderService->logInteraction($message, 'error');
+
+            throw new InputValidationException($message);
+        }
+        return $orders;
+    }
+
+    /**
+     * @return OrderInterface
+     * @throws Exception
+     */
+    protected function updateByOrderId()
+    {
+        $this->symfonyStyle->title(self::OPTION_BY_ORDER_ID);
+        $key = self::KEY_ORDER_ID;
+        $prompt = self::OPTION_BY_ORDER_ID_PROMPT;
+        $response = $this->updateBy($key, $prompt);
+        $this->orderService->logInteraction($prompt . ' response : ' . $response);
+        return $this->orderService->getOrder($response);
+    }
+
+    /**
+     * @return mixed
+     */
+    protected function topLevelQuestion()
+    {
+        $this->symfonyStyle->title(self::TITLE);
+        $mainSelection = self::OPTION_PROMPT;
+        $choices = [self::OPTION_BY_ORDER_ID, self::OPTION_BY_EMAIL, self::OPTION_QUIT];
+        $defaultChoice = self::OPTION_BY_EMAIL;
+        $this->orderService->logInteraction($mainSelection);
+
+        return $this->symfonyStyle->choice($mainSelection, $choices, $defaultChoice);
+    }
+
+    /**
      * @return string
      */
     protected function getHelpDescription()
@@ -339,49 +409,5 @@ Example usage:
   <info>php bin/magento update-email</info>
 
 EOF;
-    }
-
-    /**
-     * @return OrderInterface[]
-     * @throws Exception
-     */
-    protected function updateByEmail()
-    {
-        $this->symfonyStyle->title(self::OPTION_BY_EMAIL);
-        $key = self::KEY_EMAIL;
-        $prompt = self::OPTION_BY_EMAIL_PROMPT;
-        $emailAddress = $this->updateBy($key, $prompt);
-        $orders = $this->orderService->searchByEmail($emailAddress);
-        if (!$orders) {
-            throw new InputValidationException(__('No orders with email ' . $emailAddress . ' exists!'));
-        }
-        return $orders;
-    }
-
-    /**
-     * @return OrderInterface
-     * @throws Exception
-     */
-    protected function updateByOrderId()
-    {
-        $this->symfonyStyle->title(self::OPTION_BY_ORDER_ID);
-        $key = self::KEY_ORDER_ID;
-        $prompt = self::OPTION_BY_ORDER_ID_PROMPT;
-        $response = $this->updateBy($key, $prompt);
-
-        return $this->orderService->getOrder($response);
-    }
-
-    /**
-     * @return mixed
-     */
-    protected function topLevelQuestionnaire()
-    {
-        $this->symfonyStyle->title(self::TITLE);
-        $mainSelection = self::OPTION_PROMPT;
-        $choices = [self::OPTION_BY_ORDER_ID, self::OPTION_BY_EMAIL, self::OPTION_QUIT];
-        $defaultChoice = self::OPTION_BY_EMAIL;
-
-        return $this->symfonyStyle->choice($mainSelection, $choices, $defaultChoice);
     }
 }

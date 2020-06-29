@@ -1,14 +1,15 @@
-<?php
+<?php declare(strict_types=1);
 
-namespace SajidPatel\SalesOrder\Model;
+namespace SajidPatel\OrderEmail\Model;
 
-use Exception;
 use Magento\Framework\Api\ExtensibleDataObjectConverter;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Phrase;
 use Magento\Framework\Validator\EmailAddress;
+use Magento\Framework\Validator\Exception;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
+use Psr\Log\LoggerInterface;
 
 class OrderService
 {
@@ -31,6 +32,10 @@ class OrderService
      * @var ExtensibleDataObjectConverter
      */
     private $dataObjectConverter;
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
 
     /**
      * OrderService constructor.
@@ -38,24 +43,34 @@ class OrderService
      * @param EmailAddress $emailAddressValidator
      * @param SearchCriteriaBuilder $searchCriteriaBuilder
      * @param ExtensibleDataObjectConverter $dataObjectConverter
+     * @param LoggerInterface $logger
      */
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         EmailAddress $emailAddressValidator,
         SearchCriteriaBuilder $searchCriteriaBuilder,
-        ExtensibleDataObjectConverter $dataObjectConverter
+        ExtensibleDataObjectConverter $dataObjectConverter,
+        LoggerInterface $logger
     ) {
         $this->orderRepository = $orderRepository;
         $this->emailAddressValidator = $emailAddressValidator;
         $this->searchCriteriaBuilder = $searchCriteriaBuilder;
         $this->dataObjectConverter = $dataObjectConverter;
+        $this->logger = $logger;
     }
 
-
+    /**
+     * @param $field
+     * @param $value
+     * @return OrderInterface[]
+     */
     public function getOrders($field, $value)
     {
         $searchCriteria = $this->searchCriteriaBuilder->addFilter($field, $value, 'like')->create();
-        return $this->orderRepository->getList($searchCriteria)->getItems();
+        $orders = $this->orderRepository->getList($searchCriteria)->getItems();
+        $this->logInteraction('Orders retrieved with Order IDs : ' . implode(array_keys($orders), ','));
+
+        return $orders;
     }
 
     /**
@@ -64,7 +79,9 @@ class OrderService
      */
     public function getOrder($orderId)
     {
-        return $this->orderRepository->get($orderId);
+        $order = $this->orderRepository->get($orderId);
+        $this->logInteraction('Order retrieved for Order ID : ' . $order->getId());
+        return $order;
     }
 
     /**
@@ -73,31 +90,42 @@ class OrderService
      */
     public function searchByEmail($emailAddress)
     {
+        $this->logInteraction('Email: ' . $emailAddress, 'info');
         return $this->getOrders('customer_email', $emailAddress);
     }
 
     /**
-     * @param $id
+     * @param $order
      * @param $currentEmail
      * @param $newEmail
      * @return Phrase
      * @throws Exception
      */
-    public function sendNewEmail($id, $currentEmail, $newEmail)
+    public function setNewEmail($order, $currentEmail, $newEmail)
     {
-        $order = $this->getOrder($id);
         if (!$this->emailAddressValidator->isValid($newEmail)) {
-            throw new Exception(__('Invalid email provided'));
+            $error = __('Invalid email provided');
+            $this->logInteraction($error, 'error');
+            throw new Exception($error);
         }
 
         if ($order->getId() && $order->getCustomerEmail() == $currentEmail) {
-            $comment = __("Order email address has changed for order: %1 from %2 to %3", $id, $currentEmail, $newEmail);
+            $comment = __("Order email address has changed for order: %1 from %2 to %3", $order->getId(), $currentEmail, $newEmail);
             $order->setCustomerEmail($newEmail);
             $order->addStatusHistoryComment($comment);
             $this->orderRepository->save($order);
 
+            $this->logInteraction($comment);
             return $comment;
         }
-        return __("Order email address update failed.");
+        $comment = __("Order email address update failed.");
+        $this->logInteraction($comment);
+        return $comment;
+    }
+
+    public function logInteraction($message, $severity = 'info')
+    {
+        $message = (is_object($message) ? $message->render() : $message);
+        $this->logger->{$severity}(strip_tags($message));
     }
 }

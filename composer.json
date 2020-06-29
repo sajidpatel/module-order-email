@@ -1,8 +1,8 @@
 {
-  "name": "sajidpatel/sales-order",
+  "name": "sajidpatel/module-order-email",
   "description": "Example Magento 2 module created for a Coding Challenge",
   "require": {
-      "php": "~5.6.0|~7.0.0|~7.1.0|~7.2.0",
+      "php": "~7.1.0|~7.2.0",
       "magento/framework": "*",
       "magento/module-sales": "*",
       "ext-json": "*"
@@ -23,7 +23,7 @@
       "registration.php"
     ],
     "psr-4": {
-      "SajidPatel\\SalesOrder\\": "src/"
+      "SajidPatel\\OrderEmail\\": "src/"
     }
   }
 }

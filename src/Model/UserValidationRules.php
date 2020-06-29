@@ -1,6 +1,6 @@
-<?php
+<?php declare(strict_types=1);
 
-namespace SajidPatel\SalesOrder\Model;
+namespace SajidPatel\OrderEmail\Model;
 
 use Magento\Framework\Validator\DataObject;
 use Magento\Framework\Validator\EmailAddress;

@@ -45,22 +45,21 @@ Will be emailed to candidates in due course.
 
  - Add repository vcs to composer
  ```
-composer config repositories.sajidpatel.sales-order vcs
+composer config repositories.sajidpatel.module-order-email vcs
 ```
- - Install the module composer by running ```composer require sajidpatel/sales-order```
- - enable the module by running `php bin/magento module:enable SajidPatel_SalesOrder`
+ - Install the module composer by running ```composer require sajidpatel/module-order-email```
+ - enable the module by running `php bin/magento module:enable SajidPatel_OrderEmail`
  - apply database updates by running `php bin/magento setup:upgrade`
  - Flush the cache by running `php bin/magento cache:flush`
 
-Fork the repository as a public repository in your own github account
-Complete the coding challenge
-Submit your git repo to sajid.patel@galtone.co.uk
+Fork the repository as a public repository in your own github account.
+Complete the coding challenge.
 
 
 ## How to use it 
 Please select an order_id or email address
 
-*Licence:* BSD-3-Clause  
-*Author:* Sajid Patel 
-*Copyright:* 2020 Sajid Patel 
+*License:* OSL-3.0<br>
+*Author:* Sajid Patel<br>
+*Copyright:* 2020 Sajid Patel<br>
 *Website:* [http://sajidpatel.me/](http://sajidpatel.me/)  
