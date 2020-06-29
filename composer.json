@@ -10,7 +10,7 @@
   "version": "0.1.0",
   "type": "magento2-module",
   "license": "OSL-3.0",
-  "minimum-stability": "dev",
+  "minimum-stability": "@dev",
   "authors": [
     {
       "name": "Sajid Patel",

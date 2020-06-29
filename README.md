@@ -45,7 +45,8 @@ Will be emailed to candidates in due course.
 
  - Add repository vcs to composer
  ```
-composer config repositories.sajidpatel.module-order-email vcs
+composer config repositories.module-order-email vcs git@github.com:sajidpatel/module-order-email.git
+
 ```
  - Install the module composer by running ```composer require sajidpatel/module-order-email```
  - enable the module by running `php bin/magento module:enable SajidPatel_OrderEmail`
